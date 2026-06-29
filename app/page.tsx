@@ -11,9 +11,19 @@ import { QuotesView } from "@/components/quotes-view";
 import { statusLabels } from "@/components/status";
 import { TodayView } from "@/components/today-view";
 import { WorkspaceHeader } from "@/components/workspace-header";
-import { activities, clients, quotes, users } from "@/lib/demo-data";
+import {
+  getActivities,
+  getCurrentUser,
+  getCustomers,
+  getQuotes
+} from "@/lib/data";
 import { supabase } from "@/lib/supabase";
 import type { UserRole } from "@/lib/types";
+
+const { users } = getCurrentUser();
+const clients = getCustomers();
+const activities = getActivities();
+const quotes = getQuotes();
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>("hoje");
