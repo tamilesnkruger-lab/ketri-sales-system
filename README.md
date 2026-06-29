@@ -42,6 +42,15 @@ npm run dev
 
 O arquivo `supabase/schema.sql` cria as tabelas, tipos e politicas de acesso da V1.
 
+Para preparar a conexao, crie `.env.local` com:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-publica-anon
+```
+
+Enquanto essas variaveis nao estiverem configuradas, a V1 continua usando os dados de demonstracao.
+
 Ordem sugerida:
 
 1. Criar um projeto no Supabase.
