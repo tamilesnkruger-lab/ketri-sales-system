@@ -571,7 +571,7 @@ export function ProductsView({
         </form>
       )}
 
-      <div className="grid gap-4 2xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {filteredProducts.map((product) => {
           const isActive = product.active !== false;
           const tags = tagList(product);
@@ -579,74 +579,89 @@ export function ProductsView({
           const isActionOpen = actionProductId === product.id;
 
           return (
-            <article key={product.id} className={clsx("rounded-lg border bg-white p-4 shadow-sm", isActive ? "border-black/10" : "border-black/10 opacity-70")}>
-              <div className="grid gap-4 md:grid-cols-[132px_1fr_auto]">
-                <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg border border-black/10 bg-black/[0.03]">
+            <article
+              key={product.id}
+              className={clsx(
+                "flex min-w-0 flex-col overflow-hidden rounded-lg border bg-white shadow-sm",
+                isActive ? "border-black/10" : "border-black/10 opacity-70"
+              )}
+            >
+              <div className="flex min-h-full flex-col">
+                <div className="flex aspect-[4/3] min-h-[190px] items-center justify-center overflow-hidden border-b border-black/10 bg-black/[0.03] sm:min-h-[220px]">
                   {showImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img alt={product.name} className="h-full w-full object-cover" src={product.imageUrl ?? ""} />
                   ) : (
-                    <div className="grid justify-items-center gap-2 px-3 text-center text-xs font-bold text-ink/45">
-                      <ImageIcon className="h-7 w-7" />
+                    <div className="grid justify-items-center gap-3 px-5 text-center text-sm font-bold text-ink/45">
+                      <ImageIcon className="h-10 w-10" />
                       Foto pendente
                     </div>
                   )}
                 </div>
 
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-bold text-ink">{product.name}</h3>
-                    {product.featured && <span className="rounded-md bg-maize/25 px-2 py-1 text-xs font-bold text-ink">Herói</span>}
-                    {product.favorite && <Star className="h-4 w-4 fill-maize text-maize" />}
+                <div className="flex flex-1 flex-col p-4">
+                  <div className="min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="line-clamp-2 text-base font-bold leading-snug text-ink sm:text-lg">{product.name}</h3>
+                        <p className="mt-1 text-sm font-semibold text-ink/50">Código {product.sku}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {product.featured && <span className="rounded-md bg-maize/25 px-2 py-1 text-xs font-bold text-ink">Herói</span>}
+                        {product.favorite && <Star className="h-4 w-4 fill-maize text-maize" />}
+                      </div>
+                    </div>
                   </div>
-                  <p className="mt-1 text-sm font-semibold text-ink/50">Código {product.sku}</p>
+
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="rounded-md bg-black/[0.04] px-2 py-1 text-xs font-bold text-ink/70">{product.category}</span>
                     {tags.map((tag) => (
                       <span key={tag} className={clsx("rounded-md px-2 py-1 text-xs font-bold", categoryClass(tag))}>{tag}</span>
                     ))}
                   </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className={clsx("rounded-md px-2 py-1 text-xs font-bold", stockClass(product.stockStatus))}>
+                      {stockLabel(product.stockStatus)}
+                    </span>
+                    {canManage && (
+                      <span className={clsx("rounded-md px-2 py-1 text-xs font-bold", isActive ? "bg-leaf/10 text-leaf" : "bg-black/5 text-ink/60")}>
+                        {isActive ? "Ativo" : "Inativo"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-4 grid gap-2 rounded-lg bg-black/[0.025] p-3 sm:grid-cols-3">
                     {canManage && (
                       <div>
                         <p className="text-xs font-bold uppercase text-ink/40">Custo</p>
-                        <p className="text-sm font-bold text-ink">{displayPrice(product.costPrice)}</p>
+                        <p className="text-base font-bold text-ink">{displayPrice(product.costPrice)}</p>
                       </div>
                     )}
                     <div>
                       <p className="text-xs font-bold uppercase text-ink/40">Preço B2B</p>
-                      <p className="text-sm font-bold text-ink">{displayPrice(productB2bPrice(product))}</p>
+                      <p className="text-base font-bold text-ink">{displayPrice(productB2bPrice(product))}</p>
                     </div>
                     <div>
                       <p className="text-xs font-bold uppercase text-ink/40">Preço B2C</p>
-                      <p className="text-sm font-bold text-ink">{displayPrice(productB2cPrice(product))}</p>
+                      <p className="text-base font-bold text-ink">{displayPrice(productB2cPrice(product))}</p>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex flex-col items-start gap-2 md:items-end">
-                  <span className={clsx("rounded-md px-2 py-1 text-xs font-bold", stockClass(product.stockStatus))}>
-                    {stockLabel(product.stockStatus)}
-                  </span>
-                  {canManage && (
-                    <span className={clsx("rounded-md px-2 py-1 text-xs font-bold", isActive ? "bg-leaf/10 text-leaf" : "bg-black/5 text-ink/60")}>
-                      {isActive ? "Ativo" : "Inativo"}
-                    </span>
-                  )}
-                  <div className="mt-2 flex flex-wrap justify-start gap-2 md:justify-end">
-                    <button className="inline-flex h-9 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving || !isActive} onClick={() => addToQuote(product)} type="button">
+                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
+                    <button className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none" disabled={isSaving || !isActive} onClick={() => addToQuote(product)} type="button">
                       <PackagePlus className="h-4 w-4" />
                       Orçamento
                     </button>
-                    <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-sm font-semibold" onClick={() => copyProductInfo(product, "summary")} type="button">
+                    <button className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-black/10 px-3 text-sm font-semibold sm:flex-none" onClick={() => copyProductInfo(product, "summary")} type="button">
                       <Copy className="h-4 w-4" />
                       Copiar
                     </button>
-                    <button className="inline-flex h-9 items-center justify-center rounded-lg border border-black/10 px-3 text-sm font-semibold" onClick={() => shareProduct(product)} type="button">
+                    <button className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 text-sm font-semibold" onClick={() => shareProduct(product)} type="button">
                       <Share2 className="h-4 w-4" />
                     </button>
                     <div className="relative">
-                      <button className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/10" onClick={() => setActionProductId(isActionOpen ? null : product.id)} type="button">
+                      <button className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/10" onClick={() => setActionProductId(isActionOpen ? null : product.id)} type="button">
                         <MoreVertical className="h-4 w-4" />
                       </button>
                       {isActionOpen && (
