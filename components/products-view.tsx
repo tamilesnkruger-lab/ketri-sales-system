@@ -76,8 +76,8 @@ const quickFilters: { id: QuickFilter; label: string }[] = [
   { id: "presentes", label: "Presentes" },
   { id: "herois", label: "Produtos Herói" },
   { id: "favoritos", label: "Favoritos" },
-  { id: "com foto", label: "Com foto" },
-  { id: "sem foto", label: "Sem foto" },
+  { id: "com foto", label: "Com imagem" },
+  { id: "sem foto", label: "Sem imagem" },
   { id: "ativos", label: "Ativos" },
   { id: "inativos", label: "Inativos" }
 ];
@@ -258,6 +258,7 @@ export function ProductsView({
     return sortProducts(filtered, sortKey);
   }, [products, query, quickFilter, sortKey]);
 
+  const hasQuoteClient = Boolean(quoteClientId);
   const activeCount = products.filter((product) => product.active !== false).length;
   const photoCount = products.filter((product) => product.imageUrl).length;
 
@@ -398,9 +399,9 @@ export function ProductsView({
       <section className="rounded-lg border border-black/10 bg-white p-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-ink">Catálogo Comercial</h2>
+            <h2 className="text-xl font-bold text-ink">Biblioteca Comercial</h2>
             <p className="mt-1 max-w-2xl text-sm text-ink/60">
-              Encontre produtos, copie informações comerciais e gere orçamentos rápidos sem abrir uma tabela administrativa.
+              Consulte produtos, copie nome e preço e, se houver cliente selecionado, adicione itens a um orçamento rápido.
             </p>
           </div>
           {canManage && (
@@ -425,13 +426,13 @@ export function ProductsView({
             <strong className="text-xl text-ink">{photoCount}</strong>
           </div>
           <label className="grid gap-1 rounded-lg bg-black/[0.03] px-3 py-3 text-sm font-semibold text-ink">
-            Cliente para orçamento rápido
+            Cliente para orçamento rápido (opcional)
             <select
               className="h-9 rounded-lg border border-black/10 bg-white px-3 text-sm font-normal"
               value={quoteClientId}
               onChange={(event) => setQuoteClientId(event.target.value)}
             >
-              <option value="">Selecione apenas para orçamento</option>
+              <option value="">Sem cliente selecionado</option>
               {manageableClients.map((client) => (
                 <option key={client.id} value={client.id}>{client.name}</option>
               ))}
@@ -583,12 +584,13 @@ export function ProductsView({
             <article
               key={product.id}
               className={clsx(
-                "flex min-w-0 flex-col overflow-hidden rounded-lg border bg-white shadow-sm",
-                isActive ? "border-black/10" : "border-black/10 opacity-70"
+                "flex min-w-0 flex-col overflow-hidden rounded-lg border bg-white shadow-sm transition hover:shadow-soft",
+                !isActive && "border-black/10 opacity-70",
+                isActive && product.featured ? "border-maize/60" : "border-black/10"
               )}
             >
               <div className="flex min-h-full flex-col">
-                <div className="flex aspect-[4/3] min-h-[190px] items-center justify-center overflow-hidden border-b border-black/10 bg-black/[0.03] sm:min-h-[220px]">
+                <div className="relative flex aspect-[4/3] min-h-[190px] items-center justify-center overflow-hidden border-b border-black/10 bg-black/[0.03] sm:min-h-[220px]">
                   {showImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img alt={product.name} className="h-full w-full object-cover" src={product.imageUrl ?? ""} />
@@ -610,6 +612,7 @@ export function ProductsView({
                       <div className="flex shrink-0 items-center gap-1">
                         {product.featured && <span className="rounded-md bg-maize/25 px-2 py-1 text-xs font-bold text-ink">Herói</span>}
                         {product.favorite && <Star className="h-4 w-4 fill-maize text-maize" />}
+                        {showImage && <span className="rounded-md bg-leaf/10 px-2 py-1 text-xs font-bold text-leaf">Com imagem</span>}
                       </div>
                     </div>
                   </div>
@@ -649,14 +652,18 @@ export function ProductsView({
                     </div>
                   </div>
 
-                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
-                    <button className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none" disabled={isSaving || !isActive} onClick={() => addToQuote(product)} type="button">
+                  {!hasQuoteClient && (
+                    <p className="mt-auto pt-4 text-xs font-semibold text-ink/45">Selecione um cliente no topo para adicionar ao orçamento.</p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2 pt-3">
+                    <button className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none" disabled={isSaving || !isActive || !hasQuoteClient} onClick={() => addToQuote(product)} type="button">
                       <PackagePlus className="h-4 w-4" />
-                      Orçamento
+                      Adicionar
                     </button>
                     <button className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-black/10 px-3 text-sm font-semibold sm:flex-none" onClick={() => copyProductInfo(product, "summary")} type="button">
                       <Copy className="h-4 w-4" />
-                      Copiar
+                      Copiar preço
                     </button>
                     <button className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 text-sm font-semibold" onClick={() => shareProduct(product)} type="button">
                       <Share2 className="h-4 w-4" />
@@ -701,8 +708,10 @@ export function ProductsView({
       </div>
 
       {filteredProducts.length === 0 && (
-        <div className="rounded-lg border border-black/10 bg-white px-4 py-8 text-center text-sm font-semibold text-ink/55">
-          Nenhum produto encontrado com os filtros atuais.
+        <div className="rounded-lg border border-black/10 bg-white px-4 py-10 text-center">
+          <p className="text-base font-bold text-ink">Nenhum produto encontrado</p>
+          <p className="mt-1 text-sm font-semibold text-ink/55">Revise a busca, altere o filtro ou volte para Todos para visualizar a biblioteca completa.</p>
+          <button className="mt-4 inline-flex h-10 items-center justify-center rounded-lg border border-black/10 px-4 text-sm font-bold text-ink" onClick={() => setQuickFilter("todos")} type="button">Limpar filtro</button>
         </div>
       )}
     </div>
