@@ -483,40 +483,20 @@ export function GuidedServiceView({
   }
 
   function handlePrimaryAction() {
-    if (activeStep === "quote") {
-      void handleSaveQuote();
-      return;
-    }
-
-    if (activeStep === "conversation") {
-      void handleRegisterActivity();
-      return;
-    }
-
-    if (activeStep === "followUp") {
-      void handleCreateFollowUp();
-      return;
-    }
-
-    if (activeStep === "finish") {
-      const event = { preventDefault() {} } as FormEvent<HTMLFormElement>;
-      void handleFinishService(event);
-      return;
-    }
-
     goToNextStep();
   }
 
-  const primaryButtonLabel =
-    activeStep === "quote"
-      ? editableQuote ? "Atualizar orçamento" : "Gerar orçamento"
-      : activeStep === "conversation"
-        ? "Registrar conversa"
-        : activeStep === "followUp"
-          ? "Criar follow-up"
-          : activeStep === "finish"
-            ? "Salvar atendimento"
-            : "Continuar";
+  const primaryButtonLabel = "Continuar";
+  function stepSummary(step: StepId) {
+    if (step === "client") return selectedClient?.name ?? "Cliente pendente";
+    if (step === "goal") return serviceGoalLabel;
+    if (step === "context") return `Perfil: ${selectedProfile.label}`;
+    if (step === "products") return `${fallbackProducts.length} produto(s) sugerido(s)`;
+    if (step === "quote") return `${quoteItems.length} item(ns) | ${currency(quoteTotal)}`;
+    if (step === "conversation") return response.trim() ? category : `${selectedClientActivities.length} registro(s)`;
+    if (step === "followUp") return followUpDueAt ? shortDateTime(followUpDueAt) : "Sem data";
+    return quoteItems.length > 0 ? `Total ${currency(quoteTotal)}` : "Resumo pendente";
+  }
 
   function StepShell({
     children,
@@ -531,25 +511,37 @@ export function GuidedServiceView({
   }) {
     const isOpen = activeStep === id;
     const state = stepState(id);
+    const isComplete = isStepComplete(id);
 
     return (
-      <section className="rounded-lg border border-black/10 bg-white">
+      <section className={isOpen ? "overflow-hidden rounded-lg border border-sky/40 bg-white shadow-sm" : "overflow-hidden rounded-lg border border-black/10 bg-white"}>
         <button
           className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
           onClick={() => setActiveStep(id)}
           type="button"
         >
-          <div>
-            <p className="text-xs font-bold uppercase text-ink/45">{state}</p>
-            <h3 className="text-base font-bold text-ink">{title}</h3>
-            {description && <p className="text-sm text-ink/55">{description}</p>}
+          <div className="min-w-0">
+            <p className={isOpen ? "text-xs font-bold uppercase text-sky" : "text-xs font-bold uppercase text-ink/45"}>{state}</p>
+            <div className="mt-1 flex items-center gap-2">
+              {isComplete && !isOpen && <Check className="h-4 w-4 shrink-0 text-leaf" />}
+              <h3 className="truncate text-base font-bold text-ink">{title}</h3>
+            </div>
+            {isOpen && description && <p className="mt-1 text-sm text-ink/55">{description}</p>}
+            {!isOpen && <p className="mt-1 truncate text-sm font-semibold text-ink/55">{stepSummary(id)}</p>}
           </div>
-          <span className="rounded-md bg-black/[0.04] px-2 py-1 text-xs font-bold text-ink/60">
-            {isOpen ? "Aberta" : isStepComplete(id) ? "Concluída" : "Ver"}
+          <span className={isOpen ? "rounded-md bg-sky/10 px-2 py-1 text-xs font-bold text-sky" : "rounded-md bg-black/[0.04] px-2 py-1 text-xs font-bold text-ink/60"}>
+            {isOpen ? "Aberta" : isComplete ? "Concluída" : "Abrir"}
           </span>
         </button>
-        <div className={isOpen ? "grid gap-4 border-t border-black/10 p-4" : "hidden border-t border-black/10 p-4 lg:grid lg:gap-4"}>
+        <div className={isOpen ? "grid gap-4 border-t border-black/10 p-4" : "hidden"}>
           {children}
+          {id !== "finish" && (
+            <div className="flex justify-end border-t border-black/10 pt-3">
+              <button className="inline-flex h-10 items-center justify-center rounded-lg bg-ink px-4 text-sm font-semibold text-white" onClick={goToNextStep} type="button">
+                Continuar
+              </button>
+            </div>
+          )}
         </div>
       </section>
     );
