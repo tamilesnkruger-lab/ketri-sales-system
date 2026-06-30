@@ -1,6 +1,6 @@
 "use client";
 
-import { LogIn, ShieldCheck } from "lucide-react";
+import { LogIn, LogOut, ShieldCheck } from "lucide-react";
 import clsx from "clsx";
 import type { FormEvent } from "react";
 import type { User, UserRole } from "@/lib/types";
@@ -8,11 +8,13 @@ import type { User, UserRole } from "@/lib/types";
 type AppHeaderProps = {
   authMessage: string;
   email: string;
+  isRoleLocked: boolean;
   password: string;
   role: UserRole;
   sellerId: string;
   users: User[];
   onEmailChange: (email: string) => void;
+  onLogout?: () => void;
   onPasswordChange: (password: string) => void;
   onRoleChange: (role: UserRole) => void;
   onSellerChange: (sellerId: string) => void;
@@ -22,16 +24,25 @@ type AppHeaderProps = {
 export function AppHeader({
   authMessage,
   email,
+  isRoleLocked,
   password,
   role,
   sellerId,
   users,
   onEmailChange,
+  onLogout,
   onPasswordChange,
   onRoleChange,
   onSellerChange,
   onLogin
 }: AppHeaderProps) {
+  const selectedUser = users.find((user) => user.id === sellerId);
+  const sellerOptions = users.filter((user) => user.role === "vendedor");
+  const visibleSellerOptions =
+    selectedUser && !sellerOptions.some((user) => user.id === selectedUser.id)
+      ? [selectedUser, ...sellerOptions]
+      : sellerOptions;
+
   return (
     <header className="border-b border-black/10 bg-white">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
@@ -70,12 +81,25 @@ export function AppHeader({
             </button>
           </form>
 
+          {onLogout && (
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-black/10 px-3 text-sm font-semibold text-ink"
+              onClick={onLogout}
+              type="button"
+            >
+              <LogOut aria-hidden className="h-4 w-4" />
+              Sair
+            </button>
+          )}
+
           <div className="flex rounded-lg border border-black/10 bg-paper p-1">
             <button
               className={clsx(
                 "rounded-md px-3 py-2 text-sm font-semibold",
+                isRoleLocked && "cursor-not-allowed opacity-60",
                 role === "admin" ? "bg-ink text-white" : "text-ink/70"
               )}
+              disabled={isRoleLocked}
               onClick={() => onRoleChange("admin")}
             >
               Admin
@@ -83,8 +107,10 @@ export function AppHeader({
             <button
               className={clsx(
                 "rounded-md px-3 py-2 text-sm font-semibold",
+                isRoleLocked && "cursor-not-allowed opacity-60",
                 role === "vendedor" ? "bg-ink text-white" : "text-ink/70"
               )}
+              disabled={isRoleLocked}
               onClick={() => onRoleChange("vendedor")}
             >
               Vendedor
@@ -92,19 +118,17 @@ export function AppHeader({
           </div>
 
           <select
-            className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-ink"
-            disabled={role === "admin"}
+            className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-ink disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isRoleLocked || role === "admin"}
             value={sellerId}
             onChange={(event) => onSellerChange(event.target.value)}
             aria-label="Vendedor atual"
           >
-            {users
-              .filter((user) => user.role === "vendedor")
-              .map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
+            {visibleSellerOptions.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>

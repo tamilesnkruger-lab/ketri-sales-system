@@ -1,14 +1,14 @@
 "use client";
 
 import { Activity, UserRound } from "lucide-react";
-import { users } from "@/lib/demo-data";
-import type { UserRole } from "@/lib/types";
+import type { User, UserRole } from "@/lib/types";
 
 type AdminViewProps = {
   role: UserRole;
+  users: User[];
 };
 
-export function AdminView({ role }: AdminViewProps) {
+export function AdminView({ role, users }: AdminViewProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="rounded-lg border border-black/10 bg-white p-4">
