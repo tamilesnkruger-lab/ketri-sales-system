@@ -34,7 +34,7 @@ type ResponseCategory =
   | "retorno agendado"
   | "venda encaminhada";
 
-type CustomerProfile = "tutor" | "clinica" | "pet shop" | "loja" | "revendedor" | "parceiro";
+type CustomerProfile = "tutor" | "clinica" | "veterinario" | "pet shop" | "loja" | "revendedor" | "parceiro";
 
 type StepId = "client" | "goal" | "context" | "products" | "quote" | "conversation" | "followUp" | "finish";
 
@@ -72,7 +72,8 @@ const categories: ResponseCategory[] = [
 
 const customerProfiles: { value: CustomerProfile; label: string; keywords: string[] }[] = [
   { value: "tutor", label: "Tutor", keywords: ["tutor", "presente", "cach", "cao", "gato", "gateiro", "decor"] },
-  { value: "clinica", label: "Clinica", keywords: ["clinica", "vet", "veterin", "recepc", "organiz", "mesa"] },
+  { value: "clinica", label: "Clínica", keywords: ["clinica", "vet", "veterin", "recepc", "organiz", "mesa"] },
+  { value: "veterinario", label: "Veterinário", keywords: ["veterinario", "vet", "clinica", "atendimento", "recepc", "organiz"] },
   { value: "pet shop", label: "Pet shop", keywords: ["pet shop", "loja", "vitrine", "coleira", "pote", "comedouro"] },
   { value: "loja", label: "Loja", keywords: ["loja", "vitrine", "organiz", "chaveiro", "decor", "wall art"] },
   { value: "revendedor", label: "Revendedor", keywords: ["revenda", "atacado", "kit", "chaveiro", "catalogo"] },
@@ -84,25 +85,25 @@ const serviceSteps: Array<{ id: StepId; label: string }> = [
   { id: "goal", label: "Objetivo" },
   { id: "context", label: "Contexto" },
   { id: "products", label: "Produtos" },
-  { id: "quote", label: "Orcamento" },
+  { id: "quote", label: "Orçamento" },
   { id: "conversation", label: "Conversa" },
   { id: "followUp", label: "Follow-up" },
-  { id: "finish", label: "Finalizacao" }
+  { id: "finish", label: "Finalização" }
 ];
 
 const messageTemplates: Array<{ title: string; profile?: CustomerProfile; text: string }> = [
   {
     title: "Abertura",
-    text: "Oi! Tudo bem? Sou da Ketri Criativa. Posso te mostrar algumas opcoes da linha Pets e tal para o seu perfil?"
+    text: "Oi! Tudo bem? Sou da Ketri Criativa. Posso te mostrar algumas opções da linha Pets e tal para o seu perfil?"
   },
   {
-    title: "Entender necessidade",
-    text: "Para eu indicar melhor, voce procura algo para uso proprio, presente, vitrine, recepcao, revenda ou uma acao comercial?"
+    title: "Entender contexto",
+    text: "Para eu indicar melhor, você procura algo para uso próprio, presente, vitrine, recepção, revenda ou uma ação comercial?"
   },
   {
-    title: "Clinica",
+    title: "Clínica",
     profile: "clinica",
-    text: "Para clinicas, eu sugiro comecar por itens de recepcao e organizacao, porque ajudam no atendimento e deixam o ambiente com identidade pet."
+    text: "Para clínicas, eu sugiro comecar por itens de recepção e organização, porque ajudam no atendimento e deixam o ambiente com identidade pet."
   },
   {
     title: "Pet shop",
@@ -112,11 +113,11 @@ const messageTemplates: Array<{ title: string; profile?: CustomerProfile; text: 
   {
     title: "Revenda",
     profile: "revendedor",
-    text: "Para revenda, posso montar uma sugestao com produtos de entrada e itens mais chamativos, ja pensando em margem e variedade."
+    text: "Para revenda, posso montar uma sugestão com produtos de entrada e itens mais chamativos, ja pensando em margem e variedade."
   },
   {
     title: "Valores",
-    text: "Vou montar um orcamento com os itens sugeridos. Se quiser, ajusto quantidade e combinacao para caber melhor no seu objetivo."
+    text: "Vou montar um orçamento com os itens sugeridos. Se quiser, ajusto quantidade e combinação para caber melhor no seu objetivo."
   },
   {
     title: "Retorno",
@@ -229,12 +230,12 @@ export function GuidedServiceView({
   const nextStep = !selectedClient
     ? "Selecione um cliente para iniciar."
     : !need.trim()
-      ? "Registre a necessidade do cliente."
+      ? "Registre o resumo da conversa."
       : quoteItems.length === 0
-        ? "Adicione produtos sugeridos ao orcamento."
+        ? "Adicione produtos sugeridos ao orçamento."
         : !response.trim()
           ? "Registre a conversa antes de finalizar."
-          : "Salve atividade, follow-up e orcamento.";
+          : "Salve atividade, follow-up e orçamento.";
 
   useEffect(() => {
     if (!selectedClientId && manageableClients[0]) {
@@ -264,7 +265,7 @@ export function GuidedServiceView({
     }
 
     if (role !== "admin" && selectedClient.sellerId !== currentSellerId) {
-      throw new Error("Vendedor nao pode registrar atendimento em cliente de outro vendedor.");
+      throw new Error("Vendedor não pode registrar atendimento em cliente de outro vendedor.");
     }
   }
 
@@ -273,7 +274,7 @@ export function GuidedServiceView({
       await navigator.clipboard.writeText(text);
       setMessage("Mensagem copiada.");
     } catch {
-      setMessage("Nao foi possivel copiar automaticamente.");
+      setMessage("Não foi possível copiar automaticamente.");
     }
   }
 
@@ -289,7 +290,7 @@ export function GuidedServiceView({
 
       return [...current, buildQuoteItem(product)];
     });
-    setMessage(`${product.name} adicionado ao orcamento.`);
+    setMessage(`${product.name} adicionado ao orçamento.`);
   }
 
   function updateItem(index: number, item: QuoteItemFormData) {
@@ -304,16 +305,16 @@ export function GuidedServiceView({
     const productsText = quoteItems
       .map((item) => {
         const product = getProduct(item.productId);
-        return product ? `${item.quantity}x ${product.name}` : "produto indisponivel";
+        return product ? `${item.quantity}x ${product.name}` : "produto indisponível";
       })
       .join(", ");
 
     return [
       "[Atendimento guiado]",
       `Perfil: ${selectedProfile.label}`,
-      `Necessidade: ${need.trim() || "nao informada"}`,
+      `Resumo da conversa: ${need.trim() || "não informado"}`,
       `Resposta: ${category} - ${response.trim() || "sem resposta registrada"}`,
-      productsText ? `Produtos no orcamento: ${productsText}` : "Produtos no orcamento: nenhum"
+      productsText ? `Produtos no orçamento: ${productsText}` : "Produtos no orçamento: nenhum"
     ].join(" | ");
   }
 
@@ -321,7 +322,7 @@ export function GuidedServiceView({
     ensureClientSelected();
 
     if (!need.trim()) {
-      throw new Error("Registre a necessidade do cliente.");
+      throw new Error("Registre o resumo da conversa.");
     }
 
     if (!response.trim()) {
@@ -371,11 +372,11 @@ export function GuidedServiceView({
     ensureClientSelected();
 
     if (quoteItems.length === 0) {
-      throw new Error("Adicione pelo menos um produto ao orcamento.");
+      throw new Error("Adicione pelo menos um produto ao orçamento.");
     }
 
     if (quoteItems.some((item) => !item.productId || item.quantity <= 0 || item.unitPrice < 0)) {
-      throw new Error("Revise produto, quantidade e preco dos itens.");
+      throw new Error("Revise produto, quantidade e preço dos itens.");
     }
 
     const payload: QuoteFormData = {
@@ -400,9 +401,9 @@ export function GuidedServiceView({
     try {
       await registerConversation();
       setResponse("");
-      setMessage("Conversa registrada no historico do cliente.");
+      setMessage("Conversa registrada no histórico do cliente.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel registrar a conversa.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível registrar a conversa.");
     } finally {
       setIsSaving(false);
     }
@@ -416,7 +417,7 @@ export function GuidedServiceView({
       await saveFollowUp();
       setMessage("Follow-up criado para o cliente.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel criar o follow-up.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível criar o follow-up.");
     } finally {
       setIsSaving(false);
     }
@@ -428,9 +429,9 @@ export function GuidedServiceView({
 
     try {
       await saveQuote();
-      setMessage(editableQuote ? "Orcamento atualizado." : "Orcamento criado.");
+      setMessage(editableQuote ? "Orçamento atualizado." : "Orçamento criado.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel salvar o orcamento.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível salvar o orçamento.");
     } finally {
       setIsSaving(false);
     }
@@ -446,9 +447,9 @@ export function GuidedServiceView({
       await saveFollowUp();
       await saveQuote();
       setResponse("");
-      setMessage("Atendimento salvo: conversa, follow-up e orcamento foram atualizados.");
+      setMessage("Atendimento salvo: conversa, follow-up e orçamento foram atualizados.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel finalizar o atendimento.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível finalizar o atendimento.");
     } finally {
       setIsSaving(false);
     }
@@ -459,7 +460,7 @@ export function GuidedServiceView({
   const activeStepLabel = serviceSteps[activeStepIndex]?.label ?? "Cliente";
   const progressPercent = Math.round(((activeStepIndex + 1) / serviceSteps.length) * 100);
   const historyItemsCount = localHistory.filter((record) => record.clientId === selectedClient?.id).length + selectedClientActivities.length + selectedClientQuotes.length;
-  const quoteStatusLabel = editableQuote?.status ?? (quoteItems.length > 0 ? "rascunho" : "sem orcamento");
+  const quoteStatusLabel = editableQuote?.status ?? (quoteItems.length > 0 ? "rascunho" : "sem orçamento");
 
   function isStepComplete(step: StepId) {
     if (step === "client") return Boolean(selectedClient);
@@ -508,7 +509,7 @@ export function GuidedServiceView({
 
   const primaryButtonLabel =
     activeStep === "quote"
-      ? editableQuote ? "Atualizar orcamento" : "Gerar orcamento"
+      ? editableQuote ? "Atualizar orçamento" : "Gerar orçamento"
       : activeStep === "conversation"
         ? "Registrar conversa"
         : activeStep === "followUp"
@@ -544,7 +545,7 @@ export function GuidedServiceView({
             {description && <p className="text-sm text-ink/55">{description}</p>}
           </div>
           <span className="rounded-md bg-black/[0.04] px-2 py-1 text-xs font-bold text-ink/60">
-            {isOpen ? "Aberta" : isStepComplete(id) ? "Concluida" : "Ver"}
+            {isOpen ? "Aberta" : isStepComplete(id) ? "Concluída" : "Ver"}
           </span>
         </button>
         <div className={isOpen ? "grid gap-4 border-t border-black/10 p-4" : "hidden border-t border-black/10 p-4 lg:grid lg:gap-4"}>
@@ -564,7 +565,7 @@ export function GuidedServiceView({
               <span className="rounded-md bg-black/[0.04] px-2 py-1 text-xs font-bold text-ink/60">{serviceGoalLabel}</span>
               <span className="rounded-md bg-sky/10 px-2 py-1 text-xs font-bold text-sky">{activeStepLabel}</span>
               <span className={isRealSession ? "rounded-md bg-leaf/10 px-2 py-1 text-xs font-bold text-leaf" : "rounded-md bg-maize/20 px-2 py-1 text-xs font-bold text-ink"}>
-                {isRealSession ? "Real" : "Demonstracao"}
+                {isRealSession ? "Real" : "Demonstração"}
               </span>
             </div>
             <p className="mt-1 truncate text-sm text-ink/60">{clientSummary(selectedClient)}</p>
@@ -641,11 +642,11 @@ export function GuidedServiceView({
           <StepShell id="goal" title="Objetivo" description="Placeholder visual desta sprint.">
             <div className="rounded-lg bg-black/[0.03] p-4">
               <p className="text-sm font-bold text-ink">Objetivo do atendimento</p>
-              <p className="mt-1 text-sm text-ink/60">{serviceGoalLabel}. A selecao funcional fica para a proxima sprint.</p>
+              <p className="mt-1 text-sm text-ink/60">{serviceGoalLabel}. A selecao funcional fica para a próxima sprint.</p>
             </div>
           </StepShell>
 
-          <StepShell id="context" title="Contexto" description="Registre necessidade e perfil do cliente.">
+          <StepShell id="context" title="Contexto" description="Registre as anotações do atendimento e o perfil do cliente.">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-semibold text-ink">
                 Perfil do cliente
@@ -660,10 +661,10 @@ export function GuidedServiceView({
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-semibold text-ink md:col-span-2">
-                Necessidade do cliente
+                Resumo da conversa
                 <textarea
                   className="min-h-24 rounded-lg border border-black/10 px-3 py-2 text-sm font-normal"
-                  placeholder="Ex.: montar vitrine de pet shop, organizar recepcao da clinica, comprar presente, revender kits..."
+                  placeholder="Ex.: cliente pediu catálogo, quer orçamento, ficou de responder, precisa de produtos para vitrine ou atendimento..."
                   value={need}
                   onChange={(event) => setNeed(event.target.value)}
                 />
@@ -675,10 +676,10 @@ export function GuidedServiceView({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-bold text-ink">Produtos sugeridos</h3>
-                <p className="text-sm text-ink/55">Baseado no perfil e na necessidade registrada.</p>
+                <p className="text-sm text-ink/55">Baseado no perfil e no resumo da conversa.</p>
               </div>
               <span className="rounded-lg bg-leaf/10 px-3 py-1 text-xs font-bold text-leaf">
-                {fallbackProducts.length} sugestoes
+                {fallbackProducts.length} sugestões
               </span>
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
@@ -704,21 +705,21 @@ export function GuidedServiceView({
               ))}
               {fallbackProducts.length === 0 && (
                 <p className="rounded-lg bg-black/[0.03] px-3 py-4 text-sm font-medium text-ink/55">
-                  Nenhum produto ativo disponivel para sugestao.
+                  Nenhum produto ativo disponível para sugestão.
                 </p>
               )}
             </div>
           </StepShell>
 
-          <StepShell id="quote" title="Orcamento" description={activeStep === "quote" ? "Edite os itens do atendimento." : `${quoteItems.length} item(ns) | ${currency(quoteTotal)} | ${quoteStatusLabel}`}>
+          <StepShell id="quote" title="Orçamento" description={activeStep === "quote" ? "Edite os itens do atendimento." : `${quoteItems.length} item(ns) | ${currency(quoteTotal)} | ${quoteStatusLabel}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="inline-flex items-center gap-2 text-base font-bold text-ink">
                   <FileText className="h-4 w-4" />
-                  Orcamento do atendimento
+                  Orçamento do atendimento
                 </h3>
                 <p className="text-sm text-ink/55">
-                  {editableQuote ? `Atualizando orcamento ${editableQuote.id}` : "Novo rascunho para o cliente"}
+                  {editableQuote ? `Atualizando orçamento ${editableQuote.id}` : "Novo rascunho para o cliente"}
                 </p>
               </div>
               <strong className="text-lg text-ink">{currency(quoteTotal)}</strong>
@@ -729,7 +730,7 @@ export function GuidedServiceView({
                 return (
                   <div key={`${item.productId}-${index}`} className="grid gap-2 rounded-lg border border-black/10 p-3 md:grid-cols-[1fr_92px_120px_auto] md:items-end">
                     <div>
-                      <p className="text-sm font-bold text-ink">{product?.name ?? "Produto indisponivel"}</p>
+                      <p className="text-sm font-bold text-ink">{product?.name ?? "Produto indisponível"}</p>
                       <p className="text-xs font-semibold text-ink/50">{product?.category ?? "Sem categoria"}</p>
                     </div>
                     <label className="grid gap-1 text-xs font-bold text-ink/60">
@@ -765,7 +766,7 @@ export function GuidedServiceView({
               })}
               {quoteItems.length === 0 && (
                 <p className="rounded-lg bg-black/[0.03] px-3 py-4 text-sm font-medium text-ink/55">
-                  Adicione produtos sugeridos para gerar o orcamento.
+                  Adicione produtos sugeridos para gerar o orçamento.
                 </p>
               )}
             </div>
@@ -776,7 +777,7 @@ export function GuidedServiceView({
               type="button"
             >
               <Check className="h-4 w-4" />
-              {editableQuote ? "Atualizar orcamento" : "Gerar orcamento"}
+              {editableQuote ? "Atualizar orçamento" : "Gerar orçamento"}
             </button>
           </StepShell>
 
@@ -843,15 +844,15 @@ export function GuidedServiceView({
             </button>
           </StepShell>
 
-          <StepShell id="finish" title="Finalizacao" description="Salva conversa, follow-up e orcamento com as acoes atuais.">
+          <StepShell id="finish" title="Finalização" description="Salva conversa, follow-up e orçamento com as ações atuais.">
             <div className="rounded-lg bg-black/[0.03] p-4">
               <p className="text-sm font-bold text-ink">Resumo do atendimento</p>
               <div className="mt-3 grid gap-2 text-sm text-ink/65 md:grid-cols-2">
                 <span>Cliente: {selectedClient?.name ?? "pendente"}</span>
                 <span>Objetivo: {serviceGoalLabel}</span>
-                <span>Necessidade: {need.trim() ? "registrada" : "pendente"}</span>
+                <span>Resumo: {need.trim() ? "registrado" : "pendente"}</span>
                 <span>Produtos: {quoteItems.length} item(ns)</span>
-                <span>Orcamento: {currency(quoteTotal)}</span>
+                <span>Orçamento: {currency(quoteTotal)}</span>
                 <span>Follow-up: {followUpDueAt ? shortDateTime(followUpDueAt) : "pendente"}</span>
               </div>
             </div>
@@ -875,7 +876,7 @@ export function GuidedServiceView({
             >
               <div>
                 <h3 className="text-base font-bold text-ink">Mensagens prontas</h3>
-                <p className="text-sm text-ink/55">Recolhidas por padrao; conteudo preservado.</p>
+                <p className="text-sm text-ink/55">Roteiro de atendimento: copie a mensagem, registre a resposta e avance.</p>
               </div>
               <span className="rounded-md bg-black/[0.04] px-2 py-1 text-xs font-bold text-ink/60">{areMessagesOpen ? "Fechar" : "Abrir"}</span>
             </button>
@@ -925,7 +926,7 @@ export function GuidedServiceView({
               ))}
               {selectedClientQuotes.map((quote) => (
                 <article key={quote.id} className="rounded-lg border border-black/10 px-3 py-2 text-sm">
-                  <p className="font-bold text-ink">Orcamento {quote.status} | {shortDateTime(quote.createdAt)}</p>
+                  <p className="font-bold text-ink">Orçamento {quote.status} | {shortDateTime(quote.createdAt)}</p>
                   <p className="text-ink/65">
                     {quote.items.length} item(ns) | {currency(quote.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0))}
                   </p>

@@ -3,7 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { currency } from "@/lib/format";
-import type { Client, Product, Quote, QuoteFormData, QuoteItemFormData, QuoteStatus, UserRole } from "@/lib/types";
+import type { Client, ClientFormData, Product, Quote, QuoteFormData, QuoteItemFormData, QuoteStatus, UserRole } from "@/lib/types";
 
 type QuotesViewProps = {
   clients: Client[];
@@ -12,6 +12,7 @@ type QuotesViewProps = {
   products: Product[];
   quotes: Quote[];
   role: UserRole;
+  onCreateClient: (client: ClientFormData) => Promise<void>;
   onCreateQuote: (quote: QuoteFormData) => Promise<void>;
   onDeleteQuote: (quote: Quote) => Promise<void>;
   onUpdateQuote: (id: string, quote: QuoteFormData) => Promise<void>;
@@ -53,6 +54,7 @@ export function QuotesView({
   products,
   quotes: visibleQuotes,
   role,
+  onCreateClient,
   onCreateQuote,
   onDeleteQuote,
   onUpdateQuote,
@@ -69,7 +71,10 @@ export function QuotesView({
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [form, setForm] = useState<QuoteFormData>(() => buildForm(firstClient, firstProduct));
   const [formError, setFormError] = useState("");
+  const [formNotice, setFormNotice] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isClientFormOpen, setIsClientFormOpen] = useState(false);
+  const [clientDraft, setClientDraft] = useState({ name: "", contactName: "", phone: "", city: "" });
 
   function getClient(clientId: string) {
     return clients.find((item) => item.id === clientId);
@@ -88,6 +93,7 @@ export function QuotesView({
     setEditingQuote(null);
     setForm(buildForm(firstClient, firstProduct));
     setFormError("");
+    setFormNotice("");
     setIsFormOpen(true);
   }
 
@@ -95,6 +101,7 @@ export function QuotesView({
     setEditingQuote(quote);
     setForm(quoteToForm(quote));
     setFormError("");
+    setFormNotice("");
     setIsFormOpen(true);
   }
 
@@ -102,6 +109,8 @@ export function QuotesView({
     setEditingQuote(null);
     setForm(buildForm(firstClient, firstProduct));
     setFormError("");
+    setFormNotice("");
+    setIsClientFormOpen(false);
     setIsFormOpen(false);
   }
 
@@ -138,6 +147,38 @@ export function QuotesView({
     return [selectedProduct, ...activeProducts.filter((product) => product.id !== selectedProduct.id)];
   }
 
+  async function handleCreateBasicClient() {
+    setFormError("");
+    setFormNotice("");
+
+    if (!clientDraft.name.trim()) {
+      setFormError("Informe o nome do cliente para criar o cadastro básico.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      await onCreateClient({
+        name: clientDraft.name.trim(),
+        contactName: clientDraft.contactName.trim(),
+        phone: clientDraft.phone.trim(),
+        city: clientDraft.city.trim(),
+        status: "lead",
+        sellerId: currentSellerId,
+        lastActivity: new Date().toISOString(),
+        potential: "medio"
+      });
+      setClientDraft({ name: "", contactName: "", phone: "", city: "" });
+      setIsClientFormOpen(false);
+      setFormNotice("Cliente criado. Selecione-o no campo Cliente para continuar o orçamento.");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Não foi possível criar o cliente.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
@@ -148,12 +189,12 @@ export function QuotesView({
     }
 
     if (form.items.length === 0) {
-      setFormError("Adicione pelo menos um item ao orcamento.");
+      setFormError("Adicione pelo menos um item ao orçamento.");
       return;
     }
 
     if (form.items.some((item) => !item.productId || item.quantity <= 0 || item.unitPrice < 0)) {
-      setFormError("Revise produto, quantidade e preco dos itens.");
+      setFormError("Revise produto, quantidade e preço dos itens.");
       return;
     }
 
@@ -173,7 +214,7 @@ export function QuotesView({
 
       closeForm();
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Nao foi possivel salvar o orcamento.");
+      setFormError(error instanceof Error ? error.message : "Não foi possível salvar o orçamento.");
     } finally {
       setIsSaving(false);
     }
@@ -183,12 +224,12 @@ export function QuotesView({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-ink">Orcamentos</h2>
+          <h2 className="text-lg font-bold text-ink">Orçamentos</h2>
           <p className="text-sm text-ink/60">Crie propostas com itens e total calculado automaticamente.</p>
         </div>
         <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white" onClick={openNewQuote} type="button">
           <Plus className="h-4 w-4" />
-          Novo orcamento
+          Novo orçamento
         </button>
       </div>
 
@@ -196,12 +237,18 @@ export function QuotesView({
         <form className="grid gap-4 rounded-lg border border-black/10 bg-white p-4" onSubmit={handleSubmit}>
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-base font-bold text-ink">
-              {editingQuote ? "Editar orcamento" : "Novo orcamento"}
+              {editingQuote ? "Editar orçamento" : "Novo orçamento"}
             </h3>
             <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/10" onClick={closeForm} type="button">
               <X className="h-4 w-4" />
             </button>
           </div>
+
+          {formNotice && (
+            <div className="rounded-lg border border-leaf/25 bg-leaf/10 px-3 py-2 text-sm font-semibold text-leaf">
+              {formNotice}
+            </div>
+          )}
 
           {formError && (
             <div className="rounded-lg border border-coral/30 bg-coral/10 px-3 py-2 text-sm font-semibold text-coral">
@@ -211,7 +258,7 @@ export function QuotesView({
 
           {!isRealSession && (
             <div className="rounded-lg border border-maize/40 bg-maize/15 px-3 py-2 text-sm font-semibold text-ink">
-              Modo demonstracao: entre com Supabase para salvar orcamentos reais.
+              Modo demonstração: entre com Supabase para salvar orçamentos reais.
             </div>
           )}
 
@@ -232,6 +279,26 @@ export function QuotesView({
                 ))}
               </select>
             </label>
+          </div>
+
+          <div className="rounded-lg border border-black/10 bg-black/[0.02] p-3">
+            <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-sm font-semibold" onClick={() => setIsClientFormOpen((current) => !current)} type="button">
+              <Plus className="h-4 w-4" />
+              Criar cliente básico neste orçamento
+            </button>
+            {isClientFormOpen && (
+              <div className="mt-3 grid gap-3 md:grid-cols-4">
+                <input className="h-10 rounded-lg border border-black/10 px-3 text-sm" placeholder="Nome do cliente" value={clientDraft.name} onChange={(event) => setClientDraft((current) => ({ ...current, name: event.target.value }))} />
+                <input className="h-10 rounded-lg border border-black/10 px-3 text-sm" placeholder="Contato" value={clientDraft.contactName} onChange={(event) => setClientDraft((current) => ({ ...current, contactName: event.target.value }))} />
+                <input className="h-10 rounded-lg border border-black/10 px-3 text-sm" placeholder="Telefone" value={clientDraft.phone} onChange={(event) => setClientDraft((current) => ({ ...current, phone: event.target.value }))} />
+                <div className="flex gap-2">
+                  <input className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 px-3 text-sm" placeholder="Cidade" value={clientDraft.city} onChange={(event) => setClientDraft((current) => ({ ...current, city: event.target.value }))} />
+                  <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving} onClick={handleCreateBasicClient} type="button">
+                    Criar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-3">
@@ -255,7 +322,7 @@ export function QuotesView({
                       const product = getProduct(event.target.value);
                       updateItem(index, { ...item, productId: event.target.value, unitPrice: product?.price ?? item.unitPrice });
                     }}>
-                      {selectedProduct ? null : <option value={item.productId}>Produto indisponivel</option>}
+                      {selectedProduct ? null : <option value={item.productId}>Produto indisponível</option>}
                       {itemProductOptions.map((product) => (
                         <option key={product.id} value={product.id}>
                           {product.name}{product.active === false ? " (inativo)" : ""}
@@ -317,7 +384,7 @@ export function QuotesView({
                   return (
                     <div key={`${item.productId}-${index}`} className="flex justify-between gap-3 text-sm">
                       <span className="text-ink/70">
-                        {item.quantity}x {product?.name ?? "Produto indisponivel"}
+                        {item.quantity}x {product?.name ?? "Produto indisponível"}
                       </span>
                       <strong>{currency(item.quantity * item.unitPrice)}</strong>
                     </div>

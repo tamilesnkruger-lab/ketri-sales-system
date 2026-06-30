@@ -745,6 +745,7 @@ export default function Home() {
                   products={products}
                   quotes={visibleQuotes}
                   role={role}
+                  onCreateClient={handleCreateClient}
                   onCreateQuote={handleCreateQuote}
                   onDeleteQuote={handleDeleteQuote}
                   onUpdateQuote={handleUpdateQuote}

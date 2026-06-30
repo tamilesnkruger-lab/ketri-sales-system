@@ -240,11 +240,11 @@ export function ProductsView({
     () => (role === "admin" ? clients : clients.filter((client) => client.sellerId === currentSellerId)),
     [clients, currentSellerId, role]
   );
-  const [quoteClientId, setQuoteClientId] = useState(manageableClients[0]?.id ?? "");
+  const [quoteClientId, setQuoteClientId] = useState("");
 
   useEffect(() => {
-    if (!manageableClients.some((client) => client.id === quoteClientId)) {
-      setQuoteClientId(manageableClients[0]?.id ?? "");
+    if (quoteClientId && !manageableClients.some((client) => client.id === quoteClientId)) {
+      setQuoteClientId("");
     }
   }, [manageableClients, quoteClientId]);
 
@@ -431,6 +431,7 @@ export function ProductsView({
               value={quoteClientId}
               onChange={(event) => setQuoteClientId(event.target.value)}
             >
+              <option value="">Selecione apenas para orçamento</option>
               {manageableClients.map((client) => (
                 <option key={client.id} value={client.id}>{client.name}</option>
               ))}
