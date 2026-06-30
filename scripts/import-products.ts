@@ -18,7 +18,12 @@ type RawProduct = {
   precoAtual?: string | number | null;
   precoFinal?: string | number | null;
   preco?: string | number | null;
+  precoRevenda?: string | number | null;
+  precoAtacado?: string | number | null;
+  custoTotal?: string | number | null;
   status?: string;
+  nivelComercial?: string;
+  tagsComerciais?: string[];
   imagemPrincipal?: string;
 };
 
@@ -27,7 +32,14 @@ type ProductImportRow = {
   name: string;
   category: string;
   price: number;
-  stock_status: "pronto" | "sob encomenda";
+  cost_price: number | null;
+  b2b_price: number | null;
+  b2c_price: number;
+  image_url: string | null;
+  tags: string[];
+  featured: boolean;
+  favorite: boolean;
+  stock_status: "disponivel" | "sob encomenda" | "indisponivel" | "em producao";
   active: boolean;
 };
 
@@ -82,7 +94,15 @@ function mapActive(status: string | undefined): boolean {
 }
 
 function mapStockStatus(status: string | undefined): ProductImportRow["stock_status"] {
-  return status === "ATIVO" ? "pronto" : "sob encomenda";
+  if (status === "ATIVO") {
+    return "disponivel";
+  }
+
+  if (status === "PAUSADO") {
+    return "em producao";
+  }
+
+  return "indisponivel";
 }
 
 function buildImageMap(products: RawProduct[]): ProductImageMap {
@@ -104,6 +124,10 @@ function buildImportRows(products: RawProduct[]): ProductImportRow[] {
     const name = product.nome?.trim();
     const category = product.categoria?.trim();
     const price = firstValidPrice(product);
+    const b2bPrice = parsePrice(product.precoRevenda) ?? parsePrice(product.precoAtacado);
+    const costPrice = parsePrice(product.custoTotal);
+    const imageUrl = product.imagemPrincipal?.trim() || null;
+    const tags = product.tagsComerciais ?? [];
 
     if (!sku || !name || !category || price === null) {
       return [];
@@ -115,6 +139,13 @@ function buildImportRows(products: RawProduct[]): ProductImportRow[] {
         name,
         category,
         price,
+        cost_price: costPrice,
+        b2b_price: b2bPrice,
+        b2c_price: price,
+        image_url: imageUrl,
+        tags,
+        featured: product.nivelComercial === "HEROI",
+        favorite: false,
         stock_status: mapStockStatus(product.status),
         active: mapActive(product.status)
       }

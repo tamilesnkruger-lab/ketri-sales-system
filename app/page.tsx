@@ -702,9 +702,12 @@ export default function Home() {
                   currentSellerId={sellerId}
                   isRealSession={isRealSession}
                   products={products}
+                  quotes={visibleQuotes}
                   role={role}
                   onCreateActivity={handleCreateActivity}
                   onCreateFollowUp={handleCreateFollowUp}
+                  onCreateQuote={handleCreateQuote}
+                  onUpdateQuote={handleUpdateQuote}
                 />
               )}
               {activeTab === "clientes" && (
@@ -721,10 +724,14 @@ export default function Home() {
               )}
               {activeTab === "produtos" && (
                 <ProductsView
+                  clients={visibleClients}
+                  currentSellerId={sellerId}
                   isRealSession={isRealSession}
                   products={products}
+                  query={query}
                   role={role}
                   onCreateProduct={handleCreateProduct}
+                  onCreateQuote={handleCreateQuote}
                   onDeleteProduct={handleDeleteProduct}
                   onSetProductActive={handleSetProductActive}
                   onUpdateProduct={handleUpdateProduct}

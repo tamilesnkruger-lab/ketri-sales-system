@@ -39,14 +39,23 @@ export type ClientFormData = {
   potential: Client["potential"];
 };
 
+export type StockStatus = "disponivel" | "sob encomenda" | "indisponivel" | "em producao" | "pronto";
+
 export type Product = {
   id: string;
   sku: string;
   name: string;
   category: string;
   price: number;
-  stockStatus: "pronto" | "sob encomenda";
+  stockStatus: StockStatus;
   active?: boolean;
+  costPrice?: number | null;
+  b2bPrice?: number | null;
+  b2cPrice?: number | null;
+  imageUrl?: string | null;
+  tags?: string[];
+  featured?: boolean;
+  favorite?: boolean;
 };
 
 export type ProductFormData = {
@@ -55,6 +64,13 @@ export type ProductFormData = {
   category: string;
   price: number;
   stockStatus: Product["stockStatus"];
+  costPrice?: number | null;
+  b2bPrice?: number | null;
+  b2cPrice?: number | null;
+  imageUrl?: string | null;
+  tags?: string[];
+  featured?: boolean;
+  favorite?: boolean;
 };
 
 export type QuoteItem = {

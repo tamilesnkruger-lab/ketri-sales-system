@@ -117,7 +117,7 @@ function followUpSelectFields() {
 }
 
 function productSelectFields() {
-  return "id, sku, name, category, price, stock_status, active";
+  return "id, sku, name, category, price, stock_status, active, cost_price, b2b_price, b2c_price, image_url, tags, featured, favorite";
 }
 
 function quoteSelectFields() {
@@ -161,7 +161,14 @@ function toProductRowInput(input: ProductFormData) {
     name: input.name.trim(),
     category: input.category.trim(),
     price: input.price,
-    stock_status: input.stockStatus
+    stock_status: input.stockStatus === "pronto" ? "disponivel" : input.stockStatus,
+    cost_price: input.costPrice ?? null,
+    b2b_price: input.b2bPrice ?? null,
+    b2c_price: input.b2cPrice ?? input.price,
+    image_url: input.imageUrl?.trim() || null,
+    tags: input.tags ?? [],
+    featured: input.featured ?? false,
+    favorite: input.favorite ?? false
   };
 }
 

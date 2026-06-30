@@ -115,6 +115,8 @@ create index clients_status_idx on public.clients (status);
 create index clients_updated_at_idx on public.clients (updated_at);
 create index products_active_idx on public.products (active);
 create index products_sku_idx on public.products (sku);
+create index products_category_idx on public.products (category);
+create index products_featured_idx on public.products (featured);
 create index quotes_client_id_idx on public.quotes (client_id);
 create index quotes_seller_id_idx on public.quotes (seller_id);
 create index quotes_status_idx on public.quotes (status);

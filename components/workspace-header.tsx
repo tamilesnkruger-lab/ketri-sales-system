@@ -13,6 +13,21 @@ type WorkspaceHeaderProps = {
   onQueryChange: (query: string) => void;
 };
 
+function placeholderForTab(tab: TabId) {
+  if (tab === "produtos") {
+    return "Buscar produto, código ou categoria";
+  }
+
+  if (tab === "orcamentos") {
+    return "Buscar orçamento, cliente ou status";
+  }
+
+  if (tab === "atendimento") {
+    return "Buscar cliente para atendimento";
+  }
+
+  return "Buscar cliente, cidade ou status";
+}
 export function WorkspaceHeader({
   activeTab,
   currentSellerName,
@@ -34,7 +49,7 @@ export function WorkspaceHeader({
         <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/45" />
         <input
           className="h-11 w-full rounded-lg border border-black/10 bg-white pl-10 pr-3 text-sm"
-          placeholder="Buscar cliente, cidade ou status"
+          placeholder={placeholderForTab(activeTab)}
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
         />

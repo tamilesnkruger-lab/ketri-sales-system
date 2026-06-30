@@ -27,6 +27,13 @@ export type ProductRow = {
   price: number | string;
   stock_status: Product["stockStatus"];
   active?: boolean;
+  cost_price?: number | string | null;
+  b2b_price?: number | string | null;
+  b2c_price?: number | string | null;
+  image_url?: string | null;
+  tags?: string[] | null;
+  featured?: boolean | null;
+  favorite?: boolean | null;
 };
 
 export type QuoteRow = {
@@ -93,6 +100,8 @@ export function mapClientToClient(row: ClientRow): Client {
 }
 
 export function mapProductToProduct(row: ProductRow): Product {
+  const b2cPrice = row.b2c_price == null ? toNumber(row.price) : toNumber(row.b2c_price);
+
   return {
     id: row.id,
     sku: row.sku,
@@ -100,7 +109,14 @@ export function mapProductToProduct(row: ProductRow): Product {
     category: row.category,
     price: toNumber(row.price),
     stockStatus: row.stock_status,
-    active: row.active ?? true
+    active: row.active ?? true,
+    costPrice: row.cost_price == null ? null : toNumber(row.cost_price),
+    b2bPrice: row.b2b_price == null ? null : toNumber(row.b2b_price),
+    b2cPrice,
+    imageUrl: row.image_url ?? null,
+    tags: row.tags ?? [],
+    featured: row.featured ?? false,
+    favorite: row.favorite ?? false
   };
 }
 
