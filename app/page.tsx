@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminView } from "@/components/admin-view";
 import { AppHeader } from "@/components/app-header";
 import { ClientsView } from "@/components/clients-view";
+import { GuidedServiceView } from "@/components/guided-service-view";
 import { SidebarNav, type TabId } from "@/components/navigation";
 import { ProductsView } from "@/components/products-view";
 import { QuotesView } from "@/components/quotes-view";
@@ -692,6 +693,18 @@ export default function Home() {
                   onDeleteActivity={handleDeleteActivity}
                   onDeleteFollowUp={handleDeleteFollowUp}
                   onUpdateActivity={handleUpdateActivity}
+                />
+              )}
+              {activeTab === "atendimento" && (
+                <GuidedServiceView
+                  activities={visibleActivities}
+                  clients={clients}
+                  currentSellerId={sellerId}
+                  isRealSession={isRealSession}
+                  products={products}
+                  role={role}
+                  onCreateActivity={handleCreateActivity}
+                  onCreateFollowUp={handleCreateFollowUp}
                 />
               )}
               {activeTab === "clientes" && (

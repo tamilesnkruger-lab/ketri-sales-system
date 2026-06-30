@@ -3,6 +3,7 @@
 import {
   Boxes,
   ClipboardList,
+  Headphones,
   LayoutDashboard,
   Settings,
   UsersRound
@@ -11,6 +12,7 @@ import clsx from "clsx";
 
 export const tabs = [
   { id: "hoje", label: "Hoje", icon: LayoutDashboard },
+  { id: "atendimento", label: "Atendimento", icon: Headphones },
   { id: "clientes", label: "Clientes", icon: UsersRound },
   { id: "produtos", label: "Produtos", icon: Boxes },
   { id: "orcamentos", label: "Orcamentos", icon: ClipboardList },
@@ -26,7 +28,7 @@ type SidebarNavProps = {
 
 export function SidebarNav({ activeTab, onTabChange }: SidebarNavProps) {
   return (
-    <nav className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:block lg:space-y-2">
+    <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:block lg:space-y-2">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         return (
