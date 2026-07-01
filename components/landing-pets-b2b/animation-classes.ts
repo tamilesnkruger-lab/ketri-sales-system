@@ -1,0 +1,2 @@
+export const revealClassName = "motion-safe:transition motion-safe:duration-700 motion-safe:ease-out";
+export const hoverLiftClassName = "transition duration-300 hover:-translate-y-1 hover:shadow-soft";
