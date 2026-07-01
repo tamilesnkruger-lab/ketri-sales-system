@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
-  CalendarPlus,
   Check,
   Clipboard,
   FileText,
@@ -36,7 +35,7 @@ type ResponseCategory =
 
 type CustomerProfile = "tutor" | "clinica" | "veterinario" | "pet shop" | "loja" | "revendedor" | "parceiro";
 
-type StepId = "client" | "goal" | "context" | "products" | "quote" | "conversation" | "followUp" | "finish";
+type StepId = "client" | "opening" | "context" | "products" | "quote" | "conversation" | "followUp" | "finish";
 
 type GuidedServiceViewProps = {
   activities: Activity[];
@@ -82,13 +81,13 @@ const customerProfiles: { value: CustomerProfile; label: string; keywords: strin
 
 const serviceSteps: Array<{ id: StepId; label: string }> = [
   { id: "client", label: "Cliente" },
-  { id: "goal", label: "Objetivo" },
+  { id: "opening", label: "Abertura" },
   { id: "context", label: "Contexto" },
   { id: "products", label: "Produtos" },
-  { id: "quote", label: "Orçamento" },
+  { id: "quote", label: "Orcamento" },
   { id: "conversation", label: "Conversa" },
   { id: "followUp", label: "Follow-up" },
-  { id: "finish", label: "Finalização" }
+  { id: "finish", label: "Finalizacao" }
 ];
 
 const messageTemplates: Array<{ title: string; profile?: CustomerProfile; text: string }> = [
@@ -200,12 +199,17 @@ export function GuidedServiceView({
   const [activeStep, setActiveStep] = useState<StepId>("client");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [areMessagesOpen, setAreMessagesOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
 
   const selectedClient = manageableClients.find((client) => client.id === selectedClientId) ?? manageableClients[0];
   const selectedClientActivities = activities.filter((activity) => activity.clientId === selectedClient?.id);
   const selectedClientQuotes = quotes.filter((quote) => quote.clientId === selectedClient?.id);
   const editableQuote = selectedClientQuotes.find((quote) => quote.status === "rascunho") ?? selectedClientQuotes[0];
   const selectedProfile = customerProfiles.find((item) => item.value === profile) ?? customerProfiles[0];
+  const openingTemplate = messageTemplates.find((template) => template.title === "Abertura") ?? messageTemplates[0];
+  const contextTemplate = messageTemplates.find((template) => template.title === "Entender contexto") ?? messageTemplates[0];
+  const conversationTemplate = messageTemplates.find((template) => template.title === "Valores") ?? messageTemplates[0];
+  const followUpTemplate = messageTemplates.find((template) => template.title === "Retorno") ?? messageTemplates[0];
 
   const suggestedProducts = useMemo(() => {
     const needWords = normalizeText(need)
@@ -226,16 +230,18 @@ export function GuidedServiceView({
   }, [activeProducts, need, selectedProfile]);
 
   const fallbackProducts = suggestedProducts.length > 0 ? suggestedProducts : activeProducts.slice(0, 6);
+  const searchedProducts = useMemo(() => {
+    const search = normalizeText(productSearch.trim());
+
+    if (!search) {
+      return [];
+    }
+
+    return activeProducts
+      .filter((product) => normalizeText(`${product.name} ${product.category} ${product.sku}`).includes(search))
+      .slice(0, 8);
+  }, [activeProducts, productSearch]);
   const quoteTotal = quoteItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  const nextStep = !selectedClient
-    ? "Selecione um cliente para iniciar."
-    : !need.trim()
-      ? "Registre o resumo da conversa."
-      : quoteItems.length === 0
-        ? "Adicione produtos sugeridos ao orçamento."
-        : !response.trim()
-          ? "Registre a conversa antes de finalizar."
-          : "Salve atividade, follow-up e orçamento.";
 
   useEffect(() => {
     if (!selectedClientId && manageableClients[0]) {
@@ -455,16 +461,14 @@ export function GuidedServiceView({
     }
   }
 
-  const serviceGoalLabel = "Objetivo a definir";
   const activeStepIndex = Math.max(serviceSteps.findIndex((step) => step.id === activeStep), 0);
   const activeStepLabel = serviceSteps[activeStepIndex]?.label ?? "Cliente";
   const progressPercent = Math.round(((activeStepIndex + 1) / serviceSteps.length) * 100);
   const historyItemsCount = localHistory.filter((record) => record.clientId === selectedClient?.id).length + selectedClientActivities.length + selectedClientQuotes.length;
-  const quoteStatusLabel = editableQuote?.status ?? (quoteItems.length > 0 ? "rascunho" : "sem orçamento");
 
   function isStepComplete(step: StepId) {
     if (step === "client") return Boolean(selectedClient);
-    if (step === "goal") return false;
+    if (step === "opening") return Boolean(selectedClient);
     if (step === "context") return Boolean(need.trim());
     if (step === "products") return quoteItems.length > 0;
     if (step === "quote") return Boolean(editableQuote) || quoteItems.length > 0;
@@ -489,7 +493,7 @@ export function GuidedServiceView({
   const primaryButtonLabel = "Continuar";
   function stepSummary(step: StepId) {
     if (step === "client") return selectedClient?.name ?? "Cliente pendente";
-    if (step === "goal") return serviceGoalLabel;
+    if (step === "opening") return "Mensagem inicial pronta";
     if (step === "context") return `Perfil: ${selectedProfile.label}`;
     if (step === "products") return `${fallbackProducts.length} produto(s) sugerido(s)`;
     if (step === "quote") return `${quoteItems.length} item(ns) | ${currency(quoteTotal)}`;
@@ -499,13 +503,15 @@ export function GuidedServiceView({
   }
 
   function StepShell({
+    action,
     children,
     description,
     id,
     title
   }: {
+    action: string;
     children: ReactNode;
-    description?: string;
+    description: string;
     id: StepId;
     title: string;
   }) {
@@ -526,14 +532,18 @@ export function GuidedServiceView({
               {isComplete && !isOpen && <Check className="h-4 w-4 shrink-0 text-leaf" />}
               <h3 className="truncate text-base font-bold text-ink">{title}</h3>
             </div>
-            {isOpen && description && <p className="mt-1 text-sm text-ink/55">{description}</p>}
             {!isOpen && <p className="mt-1 truncate text-sm font-semibold text-ink/55">{stepSummary(id)}</p>}
           </div>
           <span className={isOpen ? "rounded-md bg-sky/10 px-2 py-1 text-xs font-bold text-sky" : "rounded-md bg-black/[0.04] px-2 py-1 text-xs font-bold text-ink/60"}>
-            {isOpen ? "Aberta" : isComplete ? "Concluída" : "Abrir"}
+            {isOpen ? "Agora" : isComplete ? "Concluida" : "Abrir"}
           </span>
         </button>
         <div className={isOpen ? "grid gap-4 border-t border-black/10 p-4" : "hidden"}>
+          <div className="rounded-lg bg-sky/10 p-3">
+            <p className="text-xs font-bold uppercase text-sky">Objetivo da etapa</p>
+            <p className="mt-1 text-sm font-semibold text-ink">{description}</p>
+            <p className="mt-2 text-sm text-ink/65"><strong>Acao principal:</strong> {action}</p>
+          </div>
           {children}
           {id !== "finish" && (
             <div className="flex justify-end border-t border-black/10 pt-3">
@@ -546,6 +556,7 @@ export function GuidedServiceView({
       </section>
     );
   }
+
   return (
     <form className="space-y-5 pb-20 lg:pb-0" onSubmit={handleFinishService}>
       <section className="sticky top-0 z-20 rounded-lg border border-black/10 bg-white/95 p-3 shadow-sm backdrop-blur lg:p-4">
@@ -554,7 +565,6 @@ export function GuidedServiceView({
             <p className="text-xs font-bold uppercase text-ink/45">Atendimento guiado</p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <h2 className="truncate text-lg font-bold text-ink lg:text-xl">{selectedClient?.name ?? "Selecione um cliente"}</h2>
-              <span className="rounded-md bg-black/[0.04] px-2 py-1 text-xs font-bold text-ink/60">{serviceGoalLabel}</span>
               <span className="rounded-md bg-sky/10 px-2 py-1 text-xs font-bold text-sky">{activeStepLabel}</span>
               <span className={isRealSession ? "rounded-md bg-leaf/10 px-2 py-1 text-xs font-bold text-leaf" : "rounded-md bg-maize/20 px-2 py-1 text-xs font-bold text-ink"}>
                 {isRealSession ? "Real" : "Demonstração"}
@@ -604,7 +614,12 @@ export function GuidedServiceView({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-4">
-          <StepShell id="client" title="Cliente" description="Confirme quem esta em atendimento.">
+          <StepShell
+            id="client"
+            title="Cliente"
+            description="Confirmar quem esta sendo atendido e manter o contexto visivel."
+            action="Escolha ou confirme o cliente antes de seguir a conversa."
+          >
             <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-semibold text-ink">
                 Cliente em atendimento
@@ -631,14 +646,61 @@ export function GuidedServiceView({
             </div>
           </StepShell>
 
-          <StepShell id="goal" title="Objetivo" description="Placeholder visual desta sprint.">
-            <div className="rounded-lg bg-black/[0.03] p-4">
-              <p className="text-sm font-bold text-ink">Objetivo do atendimento</p>
-              <p className="mt-1 text-sm text-ink/60">{serviceGoalLabel}. A selecao funcional fica para a próxima sprint.</p>
+          <StepShell
+            id="opening"
+            title="Abertura"
+            description="Iniciar a conversa com uma mensagem simples e comercial."
+            action="Copie a mensagem de abertura, envie ao cliente e registre a primeira resposta."
+          >
+            <div className="grid gap-3 rounded-lg border border-black/10 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase text-sky">Mensagem pronta</p>
+                  <p className="mt-1 text-sm text-ink/70">{openingTemplate.text}</p>
+                </div>
+                <button
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white"
+                  onClick={() => copyMessage(openingTemplate.text)}
+                  type="button"
+                >
+                  <Clipboard className="h-4 w-4" />
+                  Copiar
+                </button>
+              </div>
             </div>
+            <label className="grid gap-2 text-sm font-semibold text-ink">
+              Resposta inicial do cliente
+              <textarea
+                className="min-h-20 rounded-lg border border-black/10 px-3 py-2 text-sm font-normal"
+                placeholder="Ex.: respondeu que quer catalogo, pediu valores, quer ver opcoes para loja..."
+                value={response}
+                onChange={(event) => setResponse(event.target.value)}
+              />
+            </label>
           </StepShell>
 
-          <StepShell id="context" title="Contexto" description="Registre as anotações do atendimento e o perfil do cliente.">
+          <StepShell
+            id="context"
+            title="Contexto"
+            description="Entender o perfil do cliente e registrar o que ele precisa."
+            action="Pergunte o contexto, escolha o perfil e escreva um resumo curto da conversa."
+          >
+            <div className="grid gap-3 rounded-lg border border-black/10 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase text-sky">Pergunta sugerida</p>
+                  <p className="mt-1 text-sm text-ink/70">{contextTemplate.text}</p>
+                </div>
+                <button
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white"
+                  onClick={() => copyMessage(contextTemplate.text)}
+                  type="button"
+                >
+                  <Clipboard className="h-4 w-4" />
+                  Copiar
+                </button>
+              </div>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-semibold text-ink">
                 Perfil do cliente
@@ -656,7 +718,7 @@ export function GuidedServiceView({
                 Resumo da conversa
                 <textarea
                   className="min-h-24 rounded-lg border border-black/10 px-3 py-2 text-sm font-normal"
-                  placeholder="Ex.: cliente pediu catálogo, quer orçamento, ficou de responder, precisa de produtos para vitrine ou atendimento..."
+                  placeholder="Ex.: cliente pediu catalogo, quer orcamento, ficou de responder, precisa de produtos para vitrine ou atendimento..."
                   value={need}
                   onChange={(event) => setNeed(event.target.value)}
                 />
@@ -664,14 +726,67 @@ export function GuidedServiceView({
             </div>
           </StepShell>
 
-          <StepShell id="products" title="Produtos" description="Sugestoes atuais baseadas no perfil e contexto.">
+          <StepShell
+            id="products"
+            title="Produtos"
+            description="Apresentar opcoes sem perder o foco da conversa."
+            action="Pesquise um produto especifico ou use as sugestoes atuais para montar o orcamento."
+          >
+            <label className="grid gap-2 text-sm font-semibold text-ink">
+              Pesquisar produto
+              <input
+                className="h-11 rounded-lg border border-black/10 px-3 text-sm font-normal"
+                placeholder="Digite nome, SKU ou categoria..."
+                value={productSearch}
+                onChange={(event) => setProductSearch(event.target.value)}
+              />
+            </label>
+
+            {productSearch.trim() && (
+              <div className="grid gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold text-ink">Resultados da busca</h3>
+                  <span className="rounded-lg bg-black/[0.04] px-3 py-1 text-xs font-bold text-ink/55">
+                    {searchedProducts.length} encontrado(s)
+                  </span>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {searchedProducts.map((product) => (
+                    <article key={product.id} className="rounded-lg border border-black/10 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-bold uppercase text-sky">{product.category}</p>
+                          <h4 className="font-bold text-ink">{product.name}</h4>
+                          <p className="text-sm text-ink/55">SKU {product.sku} | {product.stockStatus}</p>
+                        </div>
+                        <strong className="text-sm text-ink">{currency(product.price)}</strong>
+                      </div>
+                      <button
+                        className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white"
+                        onClick={() => addProductToQuote(product)}
+                        type="button"
+                      >
+                        <ShoppingCart className="h-4 w-4" />
+                        Adicionar
+                      </button>
+                    </article>
+                  ))}
+                  {searchedProducts.length === 0 && (
+                    <p className="rounded-lg bg-black/[0.03] px-3 py-4 text-sm font-medium text-ink/55">
+                      Nenhum produto ativo encontrado para esta busca.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-bold text-ink">Produtos sugeridos</h3>
-                <p className="text-sm text-ink/55">Baseado no perfil e no resumo da conversa.</p>
+                <h3 className="text-base font-bold text-ink">Sugestoes para a conversa</h3>
+                <p className="text-sm text-ink/55">Baseadas no perfil e no resumo ja informado.</p>
               </div>
               <span className="rounded-lg bg-leaf/10 px-3 py-1 text-xs font-bold text-leaf">
-                {fallbackProducts.length} sugestões
+                {fallbackProducts.length} sugestoes
               </span>
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
@@ -697,24 +812,32 @@ export function GuidedServiceView({
               ))}
               {fallbackProducts.length === 0 && (
                 <p className="rounded-lg bg-black/[0.03] px-3 py-4 text-sm font-medium text-ink/55">
-                  Nenhum produto ativo disponível para sugestão.
+                  Nenhum produto ativo disponivel para sugestao.
                 </p>
               )}
             </div>
           </StepShell>
 
-          <StepShell id="quote" title="Orçamento" description={activeStep === "quote" ? "Edite os itens do atendimento." : `${quoteItems.length} item(ns) | ${currency(quoteTotal)} | ${quoteStatusLabel}`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <StepShell
+            id="quote"
+            title="Orcamento"
+            description="Transformar os produtos escolhidos em uma proposta simples."
+            action="Revise itens, quantidades e valores antes de salvar o rascunho."
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-black/[0.03] p-3">
               <div>
-                <h3 className="inline-flex items-center gap-2 text-base font-bold text-ink">
+                <p className="inline-flex items-center gap-2 text-base font-bold text-ink">
                   <FileText className="h-4 w-4" />
-                  Orçamento do atendimento
-                </h3>
+                  Proposta do atendimento
+                </p>
                 <p className="text-sm text-ink/55">
-                  {editableQuote ? `Atualizando orçamento ${editableQuote.id}` : "Novo rascunho para o cliente"}
+                  {editableQuote ? `Atualizando orcamento ${editableQuote.id}` : "Novo rascunho para o cliente"}
                 </p>
               </div>
-              <strong className="text-lg text-ink">{currency(quoteTotal)}</strong>
+              <div className="text-right">
+                <p className="text-xs font-bold uppercase text-ink/45">Total</p>
+                <strong className="text-lg text-ink">{currency(quoteTotal)}</strong>
+              </div>
             </div>
             <div className="grid gap-2">
               {quoteItems.map((item, index) => {
@@ -722,7 +845,7 @@ export function GuidedServiceView({
                 return (
                   <div key={`${item.productId}-${index}`} className="grid gap-2 rounded-lg border border-black/10 p-3 md:grid-cols-[1fr_92px_120px_auto] md:items-end">
                     <div>
-                      <p className="text-sm font-bold text-ink">{product?.name ?? "Produto indisponível"}</p>
+                      <p className="text-sm font-bold text-ink">{product?.name ?? "Produto indisponivel"}</p>
                       <p className="text-xs font-semibold text-ink/50">{product?.category ?? "Sem categoria"}</p>
                     </div>
                     <label className="grid gap-1 text-xs font-bold text-ink/60">
@@ -758,7 +881,7 @@ export function GuidedServiceView({
               })}
               {quoteItems.length === 0 && (
                 <p className="rounded-lg bg-black/[0.03] px-3 py-4 text-sm font-medium text-ink/55">
-                  Adicione produtos sugeridos para gerar o orçamento.
+                  Adicione produtos para gerar o orcamento.
                 </p>
               )}
             </div>
@@ -769,11 +892,36 @@ export function GuidedServiceView({
               type="button"
             >
               <Check className="h-4 w-4" />
-              {editableQuote ? "Atualizar orçamento" : "Gerar orçamento"}
+              {editableQuote ? "Atualizar orcamento" : "Gerar orcamento"}
             </button>
           </StepShell>
 
-          <StepShell id="conversation" title="Conversa" description="Registre resposta e categoria do cliente.">
+          <StepShell
+            id="conversation"
+            title="Conversa"
+            description="Registrar o que o cliente respondeu depois das opcoes apresentadas."
+            action="Pergunte o que ele achou, classifique a resposta e registre no historico."
+          >
+            <div className="rounded-lg bg-maize/20 p-3">
+              <p className="text-xs font-bold uppercase text-ink/45">Proxima acao</p>
+              <p className="mt-1 text-sm font-semibold text-ink">Pergunte ao cliente o que achou das opcoes apresentadas.</p>
+            </div>
+            <div className="grid gap-3 rounded-lg border border-black/10 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase text-sky">Mensagem pronta</p>
+                  <p className="mt-1 text-sm text-ink/70">{conversationTemplate.text}</p>
+                </div>
+                <button
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white"
+                  onClick={() => copyMessage(conversationTemplate.text)}
+                  type="button"
+                >
+                  <Clipboard className="h-4 w-4" />
+                  Copiar
+                </button>
+              </div>
+            </div>
             <div className="grid gap-3 md:grid-cols-[190px_1fr]">
               <label className="grid gap-1 text-sm font-semibold text-ink">
                 Categoria
@@ -805,7 +953,28 @@ export function GuidedServiceView({
             </button>
           </StepShell>
 
-          <StepShell id="followUp" title="Follow-up" description="Defina o proximo contato.">
+          <StepShell
+            id="followUp"
+            title="Follow-up"
+            description="Definir quando o proximo contato deve acontecer."
+            action="Combine a data com o cliente e crie o follow-up."
+          >
+            <div className="grid gap-3 rounded-lg border border-black/10 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase text-sky">Mensagem pronta</p>
+                  <p className="mt-1 text-sm text-ink/70">{followUpTemplate.text}</p>
+                </div>
+                <button
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white"
+                  onClick={() => copyMessage(followUpTemplate.text)}
+                  type="button"
+                >
+                  <Clipboard className="h-4 w-4" />
+                  Copiar
+                </button>
+              </div>
+            </div>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-sm font-semibold text-ink">
                 Titulo
@@ -836,15 +1005,20 @@ export function GuidedServiceView({
             </button>
           </StepShell>
 
-          <StepShell id="finish" title="Finalização" description="Salva conversa, follow-up e orçamento com as ações atuais.">
+          <StepShell
+            id="finish"
+            title="Finalizacao"
+            description="Conferir o atendimento antes de salvar tudo com as acoes atuais."
+            action="Revise cliente, resumo, produtos, conversa e follow-up. Depois salve o atendimento completo."
+          >
             <div className="rounded-lg bg-black/[0.03] p-4">
               <p className="text-sm font-bold text-ink">Resumo do atendimento</p>
               <div className="mt-3 grid gap-2 text-sm text-ink/65 md:grid-cols-2">
                 <span>Cliente: {selectedClient?.name ?? "pendente"}</span>
-                <span>Objetivo: {serviceGoalLabel}</span>
+                <span>Etapa: {activeStepLabel}</span>
                 <span>Resumo: {need.trim() ? "registrado" : "pendente"}</span>
                 <span>Produtos: {quoteItems.length} item(ns)</span>
-                <span>Orçamento: {currency(quoteTotal)}</span>
+                <span>Orcamento: {currency(quoteTotal)}</span>
                 <span>Follow-up: {followUpDueAt ? shortDateTime(followUpDueAt) : "pendente"}</span>
               </div>
             </div>
