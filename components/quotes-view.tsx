@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Copy, Pencil, Plus, Trash2, X } from "lucide-react";
 import { currency } from "@/lib/format";
 import type { Client, ClientFormData, Product, Quote, QuoteFormData, QuoteItemFormData, QuoteStatus, UserRole } from "@/lib/types";
 
@@ -20,6 +20,13 @@ type QuotesViewProps = {
 };
 
 const quoteStatuses: QuoteStatus[] = ["rascunho", "enviado", "aprovado", "perdido"];
+
+const statusLabels: Record<QuoteStatus, string> = {
+  rascunho: "Rascunho",
+  enviado: "Enviado",
+  aprovado: "Aprovado",
+  perdido: "Perdido"
+};
 
 function buildItem(product?: Product): QuoteItemFormData {
   return {
@@ -45,6 +52,10 @@ function quoteToForm(quote: Quote): QuoteFormData {
     status: quote.status,
     items: quote.items.map((item) => ({ ...item }))
   };
+}
+
+function quoteTotal(items: QuoteItemFormData[]) {
+  return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 }
 
 export function QuotesView({
@@ -75,6 +86,10 @@ export function QuotesView({
   const [isSaving, setIsSaving] = useState(false);
   const [isClientFormOpen, setIsClientFormOpen] = useState(false);
   const [clientDraft, setClientDraft] = useState({ name: "", contactName: "", phone: "", city: "" });
+
+  const formTotal = quoteTotal(form.items);
+  const quoteCount = visibleQuotes.length;
+  const quoteItemsCount = form.items.length;
 
   function getClient(clientId: string) {
     return clients.find((item) => item.id === clientId);
@@ -145,6 +160,26 @@ export function QuotesView({
     }
 
     return [selectedProduct, ...activeProducts.filter((product) => product.id !== selectedProduct.id)];
+  }
+
+  async function copyQuoteSummary(quote: Quote) {
+    const client = getClient(quote.clientId);
+    const lines = [
+      `Orçamento Ketri - ${client?.name ?? "Cliente"}`,
+      `Status: ${statusLabels[quote.status]}`,
+      ...quote.items.map((item) => {
+        const product = getProduct(item.productId);
+        return `${item.quantity}x ${product?.name ?? "Produto"} - ${currency(item.quantity * item.unitPrice)}`;
+      }),
+      `Total: ${currency(quoteTotal(quote.items))}`
+    ];
+
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setFormNotice("Resumo do orçamento copiado.");
+    } catch {
+      setFormNotice("Não foi possível copiar automaticamente.");
+    }
   }
 
   async function handleCreateBasicClient() {
@@ -225,7 +260,7 @@ export function QuotesView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-ink">Orçamentos</h2>
-          <p className="text-sm text-ink/60">Crie propostas com itens e total calculado automaticamente.</p>
+          <p className="text-sm text-ink/60">Monte propostas comerciais com cliente, itens, status e total visíveis.</p>
         </div>
         <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white" onClick={openNewQuote} type="button">
           <Plus className="h-4 w-4" />
@@ -233,12 +268,30 @@ export function QuotesView({
         </button>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-lg border border-black/10 bg-white p-3">
+          <p className="text-xs font-bold uppercase text-ink/45">Orçamentos</p>
+          <strong className="text-xl text-ink">{quoteCount}</strong>
+        </div>
+        <div className="rounded-lg border border-black/10 bg-white p-3">
+          <p className="text-xs font-bold uppercase text-ink/45">Itens no formulário</p>
+          <strong className="text-xl text-ink">{quoteItemsCount}</strong>
+        </div>
+        <div className="rounded-lg border border-black/10 bg-white p-3">
+          <p className="text-xs font-bold uppercase text-ink/45">Total em edição</p>
+          <strong className="text-xl text-ink">{currency(formTotal)}</strong>
+        </div>
+      </div>
+
       {isFormOpen && (
         <form className="grid gap-4 rounded-lg border border-black/10 bg-white p-4" onSubmit={handleSubmit}>
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-base font-bold text-ink">
-              {editingQuote ? "Editar orçamento" : "Novo orçamento"}
-            </h3>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold text-ink">
+                {editingQuote ? "Editar orçamento" : "Novo orçamento"}
+              </h3>
+              <p className="text-sm text-ink/55">Preencha cliente, status e itens. O total é calculado automaticamente.</p>
+            </div>
             <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/10" onClick={closeForm} type="button">
               <X className="h-4 w-4" />
             </button>
@@ -262,60 +315,75 @@ export function QuotesView({
             </div>
           )}
 
-          <div className="grid gap-3 md:grid-cols-[1fr_180px]">
-            <label className="grid gap-1 text-sm font-semibold text-ink/70">
-              Cliente
-              <select className="h-10 rounded-lg border border-black/10 px-3 text-sm font-normal" value={form.clientId} onChange={(event) => setForm((current) => ({ ...current, clientId: event.target.value, sellerId: resolveSellerId(event.target.value) }))}>
-                {manageableClients.map((client) => (
-                  <option key={client.id} value={client.id}>{client.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-semibold text-ink/70">
-              Status
-              <select className="h-10 rounded-lg border border-black/10 px-3 text-sm font-normal" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as QuoteStatus }))}>
-                {quoteStatuses.map((status) => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <section className="grid gap-3 rounded-lg border border-black/10 p-3">
+            <div>
+              <h4 className="text-sm font-bold text-ink">Cliente e status</h4>
+              <p className="text-sm text-ink/55">Se o cliente ainda não existe, crie um cadastro básico sem sair do orçamento.</p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+              <label className="grid gap-1 text-sm font-semibold text-ink/70">
+                Cliente
+                <select className="h-10 rounded-lg border border-black/10 px-3 text-sm font-normal" value={form.clientId} onChange={(event) => setForm((current) => ({ ...current, clientId: event.target.value, sellerId: resolveSellerId(event.target.value) }))}>
+                  {manageableClients.map((client) => (
+                    <option key={client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-semibold text-ink/70">
+                Status
+                <select className="h-10 rounded-lg border border-black/10 px-3 text-sm font-normal" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as QuoteStatus }))}>
+                  {quoteStatuses.map((status) => (
+                    <option key={status} value={status}>{statusLabels[status]}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
-          <div className="rounded-lg border border-black/10 bg-black/[0.02] p-3">
-            <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-sm font-semibold" onClick={() => setIsClientFormOpen((current) => !current)} type="button">
-              <Plus className="h-4 w-4" />
-              Criar cliente básico neste orçamento
-            </button>
-            {isClientFormOpen && (
-              <div className="mt-3 grid gap-3 md:grid-cols-4">
-                <input className="h-10 rounded-lg border border-black/10 px-3 text-sm" placeholder="Nome do cliente" value={clientDraft.name} onChange={(event) => setClientDraft((current) => ({ ...current, name: event.target.value }))} />
-                <input className="h-10 rounded-lg border border-black/10 px-3 text-sm" placeholder="Contato" value={clientDraft.contactName} onChange={(event) => setClientDraft((current) => ({ ...current, contactName: event.target.value }))} />
-                <input className="h-10 rounded-lg border border-black/10 px-3 text-sm" placeholder="Telefone" value={clientDraft.phone} onChange={(event) => setClientDraft((current) => ({ ...current, phone: event.target.value }))} />
-                <div className="flex gap-2">
-                  <input className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 px-3 text-sm" placeholder="Cidade" value={clientDraft.city} onChange={(event) => setClientDraft((current) => ({ ...current, city: event.target.value }))} />
-                  <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving} onClick={handleCreateBasicClient} type="button">
-                    Criar
-                  </button>
+            <div className="rounded-lg bg-black/[0.02] p-3">
+              <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-sm font-semibold" onClick={() => setIsClientFormOpen((current) => !current)} type="button">
+                <Plus className="h-4 w-4" />
+                Criar cliente básico neste fluxo
+              </button>
+              {isClientFormOpen && (
+                <div className="mt-3 grid gap-3 md:grid-cols-4">
+                  <input className="h-10 rounded-lg border border-black/10 px-3 text-sm" placeholder="Nome do cliente" value={clientDraft.name} onChange={(event) => setClientDraft((current) => ({ ...current, name: event.target.value }))} />
+                  <input className="h-10 rounded-lg border border-black/10 px-3 text-sm" placeholder="Contato" value={clientDraft.contactName} onChange={(event) => setClientDraft((current) => ({ ...current, contactName: event.target.value }))} />
+                  <input className="h-10 rounded-lg border border-black/10 px-3 text-sm" placeholder="Telefone" value={clientDraft.phone} onChange={(event) => setClientDraft((current) => ({ ...current, phone: event.target.value }))} />
+                  <div className="flex gap-2">
+                    <input className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 px-3 text-sm" placeholder="Cidade" value={clientDraft.city} onChange={(event) => setClientDraft((current) => ({ ...current, city: event.target.value }))} />
+                    <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving} onClick={handleCreateBasicClient} type="button">
+                      Criar
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </section>
 
-          <div className="grid gap-3">
+          <section className="grid gap-3 rounded-lg border border-black/10 p-3">
             <div className="flex items-center justify-between gap-3">
-              <h4 className="text-sm font-bold text-ink">Itens</h4>
+              <div>
+                <h4 className="text-sm font-bold text-ink">Itens do orçamento</h4>
+                <p className="text-sm text-ink/55">Confira produto, quantidade, valor unitário e subtotal de cada item.</p>
+              </div>
               <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-sm font-semibold" onClick={addItem} type="button">
                 <Plus className="h-4 w-4" />
                 Item
               </button>
             </div>
 
+            {form.items.length === 0 && (
+              <div className="rounded-lg bg-black/[0.03] px-4 py-5 text-center text-sm font-semibold text-ink/55">
+                Nenhum item adicionado. Inclua pelo menos um produto para salvar o orçamento.
+              </div>
+            )}
+
             {form.items.map((item, index) => {
               const itemTotal = item.quantity * item.unitPrice;
               const itemProductOptions = productOptionsForItem(item);
               const selectedProduct = getProduct(item.productId);
               return (
-                <div key={`${item.productId}-${index}`} className="grid gap-2 rounded-lg border border-black/10 p-3 md:grid-cols-[1fr_110px_130px_110px_auto] md:items-end">
+                <div key={`${item.productId}-${index}`} className="grid gap-3 rounded-lg border border-black/10 bg-white p-3 md:grid-cols-[1fr_96px_126px_126px_auto] md:items-end">
                   <label className="grid gap-1 text-sm font-semibold text-ink/70">
                     Produto
                     <select className="h-10 rounded-lg border border-black/10 px-3 text-sm font-normal" value={item.productId} onChange={(event) => {
@@ -335,12 +403,12 @@ export function QuotesView({
                     <input className="h-10 rounded-lg border border-black/10 px-3 text-sm font-normal" min="1" type="number" value={item.quantity} onChange={(event) => updateItem(index, { ...item, quantity: Number(event.target.value) })} />
                   </label>
                   <label className="grid gap-1 text-sm font-semibold text-ink/70">
-                    Unitario
+                    Unitário
                     <input className="h-10 rounded-lg border border-black/10 px-3 text-sm font-normal" min="0" step="0.01" type="number" value={item.unitPrice} onChange={(event) => updateItem(index, { ...item, unitPrice: Number(event.target.value) })} />
                   </label>
                   <div className="grid gap-1 text-sm font-semibold text-ink/70">
-                    Total
-                    <span className="inline-flex h-10 items-center rounded-lg bg-black/5 px-3 text-sm text-ink">{currency(itemTotal)}</span>
+                    Subtotal
+                    <span className="inline-flex h-10 items-center rounded-lg bg-black/5 px-3 text-sm font-bold text-ink">{currency(itemTotal)}</span>
                   </div>
                   <button className="inline-flex h-10 items-center justify-center rounded-lg border border-coral/25 px-3 text-sm font-semibold text-coral" onClick={() => removeItem(index)} type="button">
                     <Trash2 className="h-4 w-4" />
@@ -348,55 +416,80 @@ export function QuotesView({
                 </div>
               );
             })}
-          </div>
+          </section>
 
-          <div className="flex items-center justify-end gap-3 border-t border-black/10 pt-4">
-            <span className="text-sm text-ink/60">Total</span>
-            <strong className="text-lg text-ink">{currency(form.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0))}</strong>
-            <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-leaf px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving} type="submit">
+          <section className="grid gap-3 rounded-lg border border-black/10 bg-black/[0.02] p-3 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <p className="text-xs font-bold uppercase text-ink/45">Resumo</p>
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-sm font-semibold text-ink/65">
+                <span>{form.items.length} item(ns)</span>
+                <span>Status: {statusLabels[form.status]}</span>
+                <span>Total geral</span>
+              </div>
+              <strong className="mt-1 block text-2xl text-ink">{currency(formTotal)}</strong>
+            </div>
+            <button className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-leaf px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving} type="submit">
               <Check className="h-4 w-4" />
-              {isSaving ? "Salvando..." : "Salvar"}
+              {isSaving ? "Salvando..." : "Salvar orçamento"}
             </button>
-          </div>
+          </section>
         </form>
+      )}
+
+      {visibleQuotes.length === 0 && (
+        <div className="rounded-lg border border-black/10 bg-white px-4 py-10 text-center">
+          <p className="text-base font-bold text-ink">Nenhum orçamento criado ainda</p>
+          <p className="mt-1 text-sm font-semibold text-ink/55">Crie uma proposta para visualizar cliente, itens, status e total neste painel.</p>
+        </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {visibleQuotes.map((quote) => {
           const client = clients.find((item) => item.id === quote.clientId);
-          const total = quote.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+          const total = quoteTotal(quote.items);
           return (
             <article key={quote.id} className="rounded-lg border border-black/10 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-sky">{quote.id}</p>
-                  <h3 className="font-bold text-ink">{client?.name}</h3>
+                  <p className="text-xs font-bold uppercase text-sky">{quote.id}</p>
+                  <h3 className="font-bold text-ink">{client?.name ?? "Cliente não encontrado"}</h3>
+                  <p className="mt-1 text-sm font-semibold text-ink/50">{quote.items.length} item(ns) | {currency(total)}</p>
                 </div>
-                <select className="h-9 rounded-lg border border-black/10 px-2 text-xs font-bold text-leaf" value={quote.status} onChange={(event) => onUpdateQuoteStatus(quote, event.target.value as QuoteStatus)}>
-                  {quoteStatuses.map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
+                <label className="grid gap-1 text-xs font-bold uppercase text-ink/45">
+                  Status
+                  <select className="h-9 rounded-lg border border-black/10 px-2 text-xs font-bold text-leaf" value={quote.status} onChange={(event) => onUpdateQuoteStatus(quote, event.target.value as QuoteStatus)}>
+                    {quoteStatuses.map((status) => (
+                      <option key={status} value={status}>{statusLabels[status]}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
               <div className="mt-4 space-y-2">
+                {quote.items.length === 0 && (
+                  <p className="rounded-lg bg-black/[0.03] px-3 py-3 text-sm font-semibold text-ink/55">Orçamento sem itens.</p>
+                )}
                 {quote.items.map((item, index) => {
                   const product = products.find((entry) => entry.id === item.productId);
                   return (
-                    <div key={`${item.productId}-${index}`} className="flex justify-between gap-3 text-sm">
-                      <span className="text-ink/70">
+                    <div key={`${item.productId}-${index}`} className="grid gap-1 rounded-lg bg-black/[0.025] px-3 py-2 text-sm sm:grid-cols-[1fr_auto]">
+                      <span className="font-semibold text-ink/70">
                         {item.quantity}x {product?.name ?? "Produto indisponível"}
                       </span>
-                      <strong>{currency(item.quantity * item.unitPrice)}</strong>
+                      <span className="font-bold text-ink">{currency(item.quantity * item.unitPrice)}</span>
                     </div>
                   );
                 })}
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4">
                 <div>
-                  <span className="text-sm text-ink/60">Total</span>
-                  <strong className="ml-2 text-lg">{currency(total)}</strong>
+                  <span className="text-sm text-ink/60">Total geral</span>
+                  <strong className="ml-2 text-xl text-ink">{currency(total)}</strong>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <button className="inline-flex h-9 items-center gap-1 rounded-lg border border-black/10 px-2 text-sm font-semibold" onClick={() => copyQuoteSummary(quote)} type="button">
+                    <Copy className="h-4 w-4" />
+                    Copiar resumo
+                  </button>
                   <button className="inline-flex h-9 items-center gap-1 rounded-lg border border-black/10 px-2 text-sm font-semibold" onClick={() => openEditQuote(quote)} type="button">
                     <Pencil className="h-4 w-4" />
                     Editar
